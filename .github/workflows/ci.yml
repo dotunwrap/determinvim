@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  push:
+    branches:
+      - main
+
+jobs:
+  generate_matrix:
+    name: Generate matrix
+    runs-on: ubuntu-latest
+    outputs:
+      checks: ${{ steps.gen_checks.outputs.checks }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v5
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            auto-optimise-store = true
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org/ https://nix-community.cachix.org/
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+            allow-import-from-derivation = true
+          install_url: https://releases.nixos.org/nix/nix-2.28.0/install
+      - name: Generate flake.json
+        run: |
+          nix flake show --json --allow-import-from-derivation > flake.json
+      - id: gen_checks
+        name: Generate checks
+        run: |
+          systems=("x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin")
+          declare -A runners=( ["x86_64-linux"]="ubuntu-latest" ["aarch64-linux"]="ubuntu-latest" ["x86_64-darwin"]="macos-13" ["aarch64-darwin"]="macos-14" )
+          matrix="[]"
+          for sys in "${systems[@]}"; do
+            checks=$(jq -c ".checks.\"$sys\" | keys[]" < flake.json 2>/dev/null || echo "[]")
+            for check in $(echo "$checks" | jq -r '.[]'); do
+              runner="${runners[$sys]}"
+              matrix=$(echo "$matrix" | jq ". + [{\"system\": \"$sys\", \"check\": \"$check\", \"runner\": \"$runner\"}]")
+            done
+          done
+          printf "checks=%s" "$matrix" >> $GITHUB_OUTPUT
+
+  build_checks:
+    name: Build checks
+    runs-on: ${{ matrix.check.runner }}
+    needs:
+      - generate_matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        check: ${{fromJson(needs.generate_matrix.outputs.checks)}}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v5
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            auto-optimise-store = true
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org/ https://nix-community.cachix.org
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+            allow-import-from-derivation = true
+          install_url: https://releases.nixos.org/nix/nix-2.28.0/install
+      - name: Setup cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: your-cachix-name  # Replace with your cachix name
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - name: Build everything
+        run: nix build .#checks.${{ matrix.check.system }}.${{ matrix.check.check }} --no-link
+
+  check_flake:
+    name: Check flake
+    runs-on: ubuntu-latest
+    needs:
+      - generate_matrix
+    continue-on-error: true
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v5
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            auto-optimise-store = true
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org/ https://nix-community.cachix.org
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+            allow-import-from-derivation = true
+          install_url: https://releases.nixos.org/nix/nix-2.28.0/install
+      - name: Run checks
+        run: |
+          nix flake check --keep-going --allow-import-from-derivation
