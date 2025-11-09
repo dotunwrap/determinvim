@@ -1,34 +1,30 @@
 {
+  description = ''
+    determinvim - a deterministic nvim configuration
+  '';
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    nvf.url = "github:notashelf/nvf";
+    systems.url = "github:nix-systems/default";
+
+    nixvim = {
+      url = "github:/nix-community/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { flake-parts
-    , nvf
-    , ...
-    } @ inputs:
+    { flake-parts, ... }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [
-        "x86_64-linux"
-        "x86_64-darwin"
-        "aarch64-linux"
-        "aarch64-darwin"
-      ];
+      systems = import inputs.systems;
 
-      perSystem = { pkgs, ... }:
-        let
-          configModule = import ./nvf-config.nix;
-          nvimConfig = nvf.lib.neovimConfiguration {
-            modules = [ configModule ];
-            inherit pkgs;
-          };
-        in
-        {
-          packages.default = nvimConfig.neovim;
-          formatter = pkgs.alejandra;
-        };
+      _module.args = { inherit inputs; };
+
+      imports = [
+        ./parts/package.nix
+        ./parts/devshell.nix
+        ./parts/checks.nix
+      ];
     };
 }
