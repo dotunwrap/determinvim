@@ -1,12 +1,13 @@
 {
   lib,
   pkgs,
+  autoInstallFormatters,
   ...
 }:
 {
   plugins.conform-nvim = {
     enable = true;
-    autoInstall.enable = true;
+    autoInstall.enable = autoInstallFormatters;
     settings = {
       formatters_by_ft = {
         "_" = [
