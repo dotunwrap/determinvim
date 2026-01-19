@@ -31,7 +31,8 @@
       };
 
       config = inputs.nixvim.lib.evalNixvim {
-        inherit system module;
+        inherit system;
+        modules = [ module ];
         extraSpecialArgs = {
           inherit utils;
           autoInstallFormatters = false;
@@ -42,7 +43,7 @@
         default = packages.fullyFeatured;
         fullyFeatured = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule nixvimModuleFull;
         basic = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule nixvimModuleBasic;
-        initLua = pkgs.writeText "init.lua" config.config.content;
+        # initLua = pkgs.writeText "init.lua" config.config.content;  # TODO: Figure out how to output init.lua without nix store reliance
       };
     in
     {
