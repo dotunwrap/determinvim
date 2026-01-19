@@ -5,12 +5,12 @@
 }:
 {
   perSystem =
-    {
-      pkgs,
-      system,
-      ...
-    }:
+    { system, ... }:
     let
+      pkgs = import inputs.nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
       nixvimModule = {
         module = import (self + "/config");
         inherit pkgs;

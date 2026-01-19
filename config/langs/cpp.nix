@@ -1,7 +1,7 @@
 {
-  plugins = {
-    lsp.servers.clangd = {
-      enable = true;
+  lsp.servers.clangd = {
+    enable = true;
+    config = {
       cmd = [
         "clangd"
         "--background-index"
@@ -11,6 +11,12 @@
         "cpp"
       ];
     };
-    treesitter.settings.ensure_installed = [ "c" "cpp" ];
+  };
+  plugins = {
+    treesitter.settings.ensure_installed = [
+      "c"
+      "cpp"
+    ];
+    conform-nvim.settings.formatters_by_ft.cpp = [ "clang_format" ];
   };
 }
