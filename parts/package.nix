@@ -11,26 +11,41 @@
         inherit system;
         config.allowUnfree = true;
       };
-      nixvimModule = {
-        module = import (self + "/config");
-        inherit pkgs;
+
+      module = import (self + "/config");
+      utils = import (self + "/utils");
+
+      nixvimModuleFull = {
+        inherit pkgs module;
         extraSpecialArgs = {
-          utils = import (self + "/utils");
+          inherit utils;
+          autoInstallFormatters = true;
         };
       };
-      nvim = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule nixvimModule;
-      config = inputs.nixvim.lib.evalNixvim {
-        modules = [ (import (self + "/config")) ];
+      nixvimModuleBasic = {
+        inherit pkgs module;
         extraSpecialArgs = {
-          utils = import (self + "/utils");
+          inherit utils;
+          autoInstallFormatters = false;
         };
-        inherit system;
+      };
+
+      config = inputs.nixvim.lib.evalNixvim {
+        inherit system module;
+        extraSpecialArgs = {
+          inherit utils;
+          autoInstallFormatters = false;
+        };
+      };
+
+      packages = {
+        default = packages.fullyFeatured;
+        fullyFeatured = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule nixvimModuleFull;
+        basic = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule nixvimModuleBasic;
+        initLua = pkgs.writeText "init.lua" config.config.content;
       };
     in
     {
-      packages = {
-        default = nvim;
-        initLua = pkgs.writeText "init.lua" config.config.content;
-      };
+      inherit packages;
     };
 }
