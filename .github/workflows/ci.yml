@@ -31,7 +31,9 @@ jobs:
           install_url: https://releases.nixos.org/nix/nix-2.28.0/install
       - name: Generate flake.json
         run: |
-          nix flake show --json --allow-import-from-derivation > flake.json
+          nix flake show --json --allow-import-from-derivation --impure > flake.json
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
       - id: gen_checks
         name: Generate checks
         run: |
@@ -99,4 +101,6 @@ jobs:
           install_url: https://releases.nixos.org/nix/nix-2.28.0/install
       - name: Run checks
         run: |
-          nix flake check --keep-going --allow-import-from-derivation
+          nix flake check --keep-going --allow-import-from-derivation --impure
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
