@@ -1,6 +1,6 @@
 {
   description = ''
-    determinvim - a deterministic nvim configuration
+    determinvim - a deterministic neovim configuration
   '';
 
   inputs = {
